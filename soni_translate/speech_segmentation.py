@@ -23,6 +23,7 @@ ASR_MODEL_OPTIONS = [
     "large-v1",
     "large-v2",
     "large-v3",
+    "turbo",
     "distil-large-v2",
     "Systran/faster-distil-whisper-large-v3",
     "tiny.en",
@@ -227,6 +228,9 @@ def transcribe_speech(
 
         asr_model = model_dir
         logger.info(f"ASR Model: {str(model_dir)}")
+
+    if asr_model == "turbo":
+        asr_model = "deepdml/faster-whisper-large-v3-turbo-ct2"
 
     model = whisperx.load_model(
         asr_model,

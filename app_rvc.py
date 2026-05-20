@@ -382,15 +382,15 @@ class SoniTranslate(SoniTrCache):
         directory_input="",
         YOUR_HF_TOKEN="",
         preview=False,
-        transcriber_model="large-v3",
+        transcriber_model="turbo",
         batch_size=4,
         compute_type="auto",
         origin_language="Automatic detection",
-        target_language="English (en)",
+        target_language="Portuguese (pt)",
         min_speakers=1,
         max_speakers=1,
-        tts_voice00="en-US-EmmaMultilingualNeural-Female",
-        tts_voice01="en-US-AndrewMultilingualNeural-Male",
+        tts_voice00="pt-BR-AntonioNeural-Male",
+        tts_voice01="pt-BR-FranciscaNeural-Female",
         tts_voice02="en-US-AvaMultilingualNeural-Female",
         tts_voice03="en-US-BrianMultilingualNeural-Male",
         tts_voice04="de-DE-SeraphinaMultilingualNeural-Female",
@@ -405,7 +405,7 @@ class SoniTranslate(SoniTrCache):
         mix_method_audio="Adjusting volumes and mixing audio",
         max_accelerate_audio=2.1,
         acceleration_rate_regulation=False,
-        volume_original_audio=0.25,
+        volume_original_audio=0.0,
         volume_translated_audio=1.80,
         output_format_subtitle="srt",
         get_translated_text=False,
@@ -420,7 +420,7 @@ class SoniTranslate(SoniTrCache):
         subtitle_file=None,
         output_type="video (mp4)",
         voiceless_track=False,
-        voice_imitation=False,
+        voice_imitation=True,
         voice_imitation_max_segments=3,
         voice_imitation_vocals_dereverb=False,
         voice_imitation_remove_previous=True,
@@ -1258,8 +1258,8 @@ class SoniTranslate(SoniTrCache):
         document=None,  # doc path gui
         directory_input="",  # doc path
         origin_language="English (en)",
-        target_language="English (en)",
-        tts_voice00="en-US-EmmaMultilingualNeural-Female",
+        target_language="Portuguese (pt)",
+        tts_voice00="pt-BR-AntonioNeural-Male",
         name_final_file="",
         translate_process="google_translator",
         output_type="audio",
@@ -1504,7 +1504,7 @@ def create_gui(theme, logs_in_gui=False):
                     )
                     TRANSLATE_AUDIO_TO = gr.Dropdown(
                         LANGUAGES_LIST[1:],
-                        value="English (en)",
+                        value="Portuguese (pt)",
                         label=lg_conf["tat_label"],
                         info=lg_conf["tat_info"],
                     )
@@ -1539,14 +1539,14 @@ def create_gui(theme, logs_in_gui=False):
 
                     tts_voice00 = gr.Dropdown(
                         SoniTr.tts_info.tts_list(),
-                        value="en-US-EmmaMultilingualNeural-Female",
+                        value="pt-BR-AntonioNeural-Male",
                         label=lg_conf["sk1"],
                         visible=True,
                         interactive=True,
                     )
                     tts_voice01 = gr.Dropdown(
                         SoniTr.tts_info.tts_list(),
-                        value="en-US-AndrewMultilingualNeural-Male",
+                        value="pt-BR-FranciscaNeural-Female",
                         label=lg_conf["sk2"],
                         visible=True,
                         interactive=True,
@@ -1774,7 +1774,7 @@ def create_gui(theme, logs_in_gui=False):
                             volume_original_mix = gr.Slider(
                                 label=lg_conf["vol_ori"],
                                 info="for Adjusting volumes and mixing audio",
-                                value=0.25,
+                                value=0.0,
                                 step=0.05,
                                 minimum=0.0,
                                 maximum=2.50,
@@ -1843,7 +1843,7 @@ def create_gui(theme, logs_in_gui=False):
                                 maximum=30,
                             )
                             whisper_model_default = (
-                                "large-v3"
+                                "turbo"
                                 if SoniTr.device == "cuda"
                                 else "medium"
                             )
