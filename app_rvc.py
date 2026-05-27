@@ -2861,4 +2861,6 @@ if __name__ == "__main__":
         show_error=True,
         quiet=False,
         debug=(True if logger.isEnabledFor(logging.DEBUG) else False),
+        server_name=os.getenv("HOST", "::"),
+        server_port=int(os.getenv("PORT", "7860")),
     )
