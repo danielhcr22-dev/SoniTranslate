@@ -97,6 +97,47 @@ import time
 import hashlib
 import sys
 
+# Output directory override for Docker.
+# Priority:
+# 1. SONITR_OUTPUT_DIR
+# 2. OUTPUT_DIR
+# 3. outputs
+SONITR_OUTPUT_DIR = os.path.abspath(
+    os.getenv("SONITR_OUTPUT_DIR") or os.getenv("OUTPUT_DIR") or "outputs"
+)
+
+os.makedirs(SONITR_OUTPUT_DIR, exist_ok=True)
+
+import soni_translate.postprocessor as sonitr_postprocessor
+
+_ORIGINAL_GET_OUTPUT_FILE = sonitr_postprocessor.get_output_file
+
+
+def get_sonitr_output_dir():
+    output_dir = os.path.abspath(
+        os.getenv("SONITR_OUTPUT_DIR") or os.getenv("OUTPUT_DIR") or SONITR_OUTPUT_DIR
+    )
+    os.makedirs(output_dir, exist_ok=True)
+    return output_dir
+
+
+def get_output_file_env(
+    original_file,
+    new_file_name,
+    soft_subtitles,
+    output_directory="",
+):
+    return _ORIGINAL_GET_OUTPUT_FILE(
+        original_file,
+        new_file_name,
+        soft_subtitles,
+        output_directory=output_directory or get_sonitr_output_dir(),
+    )
+
+
+sonitr_postprocessor.get_output_file = get_output_file_env
+logger.info(f"SoniTranslate output directory: {get_sonitr_output_dir()}")
+
 directories = [
     "downloads",
     "logs",
@@ -105,7 +146,7 @@ directories = [
     "_XTTS_",
     f"audio2{os.sep}audio",
     "audio",
-    "outputs",
+    get_sonitr_output_dir(),
 ]
 [
     os.makedirs(directory)
@@ -349,7 +390,7 @@ class SoniTranslate(SoniTrCache):
         media_batch = media_batch if media_batch else [None]
         logger.debug(str(media_batch))
 
-        remove_directory_contents("outputs")
+        remove_directory_contents(get_sonitr_output_dir())
 
         if edit_text_arg or get_text_arg:
             return self.multilingual_media_conversion(
