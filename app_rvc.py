@@ -95,15 +95,18 @@ from voice_main import ClassVoices
 import argparse
 import time
 import hashlib
+import re
 import sys
 
-# Output directory override for Docker.
+# Output directory override for Docker/Salad.
 # Priority:
 # 1. SONITR_OUTPUT_DIR
 # 2. OUTPUT_DIR
 # 3. outputs
 SONITR_OUTPUT_DIR = os.path.abspath(
-    os.getenv("SONITR_OUTPUT_DIR") or os.getenv("OUTPUT_DIR") or "outputs"
+    os.getenv("SONITR_OUTPUT_DIR")
+    or os.getenv("OUTPUT_DIR")
+    or "outputs"
 )
 
 os.makedirs(SONITR_OUTPUT_DIR, exist_ok=True)
@@ -115,10 +118,61 @@ _ORIGINAL_GET_OUTPUT_FILE = sonitr_postprocessor.get_output_file
 
 def get_sonitr_output_dir():
     output_dir = os.path.abspath(
-        os.getenv("SONITR_OUTPUT_DIR") or os.getenv("OUTPUT_DIR") or SONITR_OUTPUT_DIR
+        os.getenv("SONITR_OUTPUT_DIR")
+        or os.getenv("OUTPUT_DIR")
+        or SONITR_OUTPUT_DIR
     )
     os.makedirs(output_dir, exist_ok=True)
     return output_dir
+
+
+def make_safe_output_name(
+    name,
+    original_file="",
+    max_bytes=180,
+):
+    """
+    Cria um nome seguro para Linux, evitando:
+    - quebras de linha;
+    - URLs inteiras no nome;
+    - caracteres especiais;
+    - nomes maiores que o limite do filesystem.
+    """
+    raw_name = str(name or "").strip()
+    original_file = str(original_file or "")
+
+    safe_name = re.sub(r"[\r\n\t]+", "_", raw_name)
+    safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", safe_name)
+    safe_name = re.sub(r"_+", "_", safe_name)
+    safe_name = safe_name.strip("._-")
+
+    if not safe_name:
+        safe_name = "output"
+
+    if len(safe_name.encode("utf-8")) <= max_bytes:
+        return safe_name
+
+    digest = hashlib.sha256(
+        f"{raw_name}\0{original_file}".encode(
+            "utf-8",
+            errors="replace",
+        )
+    ).hexdigest()[:12]
+
+    stem, extension = os.path.splitext(safe_name)
+
+    suffix = f"__{digest}{extension}"
+    available_bytes = max_bytes - len(suffix.encode("utf-8"))
+
+    while (
+        stem
+        and len(stem.encode("utf-8")) > available_bytes
+    ):
+        stem = stem[:-1]
+
+    stem = stem.rstrip("._-") or "output"
+
+    return f"{stem}{suffix}"
 
 
 def get_output_file_env(
@@ -127,16 +181,33 @@ def get_output_file_env(
     soft_subtitles,
     output_directory="",
 ):
+    safe_file_name = make_safe_output_name(
+        new_file_name,
+        original_file,
+    )
+
+    if safe_file_name != new_file_name:
+        logger.info(
+            f"Output filename shortened: "
+            f"{new_file_name!r} -> {safe_file_name!r}"
+        )
+
     return _ORIGINAL_GET_OUTPUT_FILE(
         original_file,
-        new_file_name,
+        safe_file_name,
         soft_subtitles,
-        output_directory=output_directory or get_sonitr_output_dir(),
+        output_directory=(
+            output_directory
+            or get_sonitr_output_dir()
+        ),
     )
 
 
 sonitr_postprocessor.get_output_file = get_output_file_env
-logger.info(f"SoniTranslate output directory: {get_sonitr_output_dir()}")
+
+logger.info(
+    f"SoniTranslate output directory: {get_sonitr_output_dir()}"
+)
 
 directories = [
     "downloads",
@@ -370,8 +441,14 @@ class SoniTranslate(SoniTrCache):
 
         media_file_arg = kwargs[0] if kwargs[0] is not None else []
 
-        link_media_arg = kwargs[1]
-        link_media_arg = [x.strip() for x in link_media_arg.split(',')]
+        link_media_arg = kwargs[1] or ""
+
+        link_media_arg = [
+            item.strip()
+            for item in re.split(r"[\r\n,]+", link_media_arg)
+            if item.strip()
+        ]
+
         link_media_arg = get_link_list(link_media_arg)
 
         path_arg = kwargs[2]
@@ -387,6 +464,16 @@ class SoniTranslate(SoniTrCache):
 
         media_batch = media_file_arg + link_media_arg + path_arg
         media_batch = list(filter(lambda x: x != "", media_batch))
+
+        logger.info(
+            f"Batch input: {len(media_batch)} item(s)"
+        )
+
+        for index, media_item in enumerate(media_batch, start=1):
+            logger.info(
+                f"Batch item {index}/{len(media_batch)}: {media_item}"
+            )
+
         media_batch = media_batch if media_batch else [None]
         logger.debug(str(media_batch))
 
